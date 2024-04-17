@@ -1,98 +1,62 @@
-#include "thread.h"
 #include "socketserver.h"
-#include <iostream>
+#include "socket.h"
+#include <thread>
 #include <vector>
-#include <algorithm>
 #include <mutex>
+#include <iostream>
+#include <algorithm>
+#include <memory>
 
 using namespace Sync;
 
-class ClientHandler : public Thread
-{
-private:
-    Socket* clientSocket;
-    std::vector<ClientHandler*>& clients;
-    std::mutex& clientsMutex;
+std::vector<std::shared_ptr<Socket>> clients;
+std::mutex clients_mutex;
 
-public:
-    ClientHandler(Socket* socket, std::vector<ClientHandler*>& clients, std::mutex& mutex)
-        : clientSocket(socket), clients(clients), clientsMutex(mutex)
-    {}
+void handle_client(std::shared_ptr<Socket> client_socket) {
+    while (true) {
+        try {
+            ByteArray data;
+            client_socket->Read(data);
+            std::string message = data.ToString();
 
-    ~ClientHandler()
-    {
-        // Cleanup
-        {
-            std::lock_guard<std::mutex> lock(clientsMutex);
-            clients.erase(std::remove(clients.begin(), clients.end(), this), clients.end());
-        }
-        std::cout << "Client disconnected." << std::endl;
-        delete clientSocket;
-    }
-
-    virtual long ThreadMain()
-    {
-        while (true) {
-            try {
-                // Read data from the client
-                ByteArray data;
-                clientSocket->Read(data);
-                std::string message = data.ToString();
-
-                // Check for termination message
-                if (message == "done") {
-                    std::cout << "Client requested to terminate connection." << std::endl;
-                    break;
-                }
-
-                // Forward the message to all clients
-                {
-                    std::lock_guard<std::mutex> lock(clientsMutex);
-                    for (ClientHandler* client : clients) {
-                        if (client != this) {
-                            client->clientSocket->Write(data);
-                        }
-                    }
-                }
-            } catch (const std::exception& ex) {
-                std::cerr << "Error in ClientHandler::ThreadMain(): " << ex.what() << std::endl;
+            if (message == "/quit") {
+                std::cout << "Client has disconnected." << std::endl;
                 break;
             }
+
+            std::lock_guard<std::mutex> lock(clients_mutex);
+            for (auto& client : clients) {
+                if (client != client_socket) {
+                    client->Write(data);
+                }
+            }
+        } catch (std::exception& e) {
+            std::cerr << "Exception in client handler: " << e.what() << std::endl;
+            break;
         }
-
-        // Close the connection
-        clientSocket->Close();
-
-        return 0;
     }
-};
 
-int main(void)
-{
-    std::cout << "I am a server. (type end to terminate)" << std::endl;
+    client_socket->Close();
+    std::lock_guard<std::mutex> lock(clients_mutex);
+    clients.erase(std::remove(clients.begin(), clients.end(), client_socket), clients.end());
+}
 
-    // Create our server
+int main(int argc, char* argv[]) {
     SocketServer server(3000);
-    std::vector<ClientHandler*> clients;
-    std::mutex clientsMutex;
 
-    while (true) {
-        // Wait for a client socket connection
-        Socket* clientSocket = new Socket(server.Accept());
-        std::cout << "Client connected." << std::endl;
+    try {
+        while (true) {
+            std::shared_ptr<Socket> client_socket(new Socket(server.Accept()));
+            std::cout << "Client connected!" << std::endl;
+            
+            std::lock_guard<std::mutex> lock(clients_mutex);
+            clients.push_back(client_socket);
 
-        // Create a new thread to handle the client
-        ClientHandler* clientHandler = new ClientHandler(clientSocket, clients, clientsMutex);
-
-        {
-            std::lock_guard<std::mutex> lock(clientsMutex);
-            clients.push_back(clientHandler);
+            std::thread client_thread(handle_client, client_socket);
+            client_thread.detach();
         }
-    }
-
-    // Clean up
-    for (ClientHandler* client : clients) {
-        delete client;
+    } catch (std::exception& e) {
+        std::cerr << "Server exception: " << e.what() << std::endl;
     }
 
     return 0;
