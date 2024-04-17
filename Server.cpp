@@ -22,12 +22,13 @@ void handle_client(std::shared_ptr<Socket> client_socket) {
             if (message == "/quit") {
                 std::cout << "Client has disconnected." << std::endl;
                 break;
-            }
-
-            std::lock_guard<std::mutex> lock(clients_mutex);
-            for (auto& client : clients) {
-                if (client != client_socket) {
-                    client->Write(data);
+            } else {
+                // Forward the message to all clients
+                std::lock_guard<std::mutex> lock(clients_mutex);
+                for (auto& client : clients) {
+                    if (client != client_socket) {
+                        client->Write(data);
+                    }
                 }
             }
         } catch (std::exception& e) {

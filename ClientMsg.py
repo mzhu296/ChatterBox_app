@@ -38,6 +38,10 @@ def send_message(event=None):
             print("Connection closed!")
             client_socket.close()
 
+def join_chatroom():
+    # Implement function to join chatroom
+    pass
+
 def on_closing(event=None):
     """This function is called when the window is closed."""
     try:
@@ -71,6 +75,9 @@ def setup_gui():
 
     send_button = tk.Button(window, text="Send", command=send_message)
     send_button.pack()
+
+    join_button = tk.Button(window, text="Join Chatroom", command=join_chatroom)
+    join_button.pack()
 
     window.protocol("WM_DELETE_WINDOW", on_closing)
 
