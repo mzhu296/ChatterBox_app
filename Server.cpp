@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
     try {
         while (true) {
             std::shared_ptr<Socket> client_socket(new Socket(server.Accept()));
-            std::cout << "Client connected!" << std::endl;
+            std::cout << "New Client connected!" << std::endl;
             
             // Receive chatroom name from client
             ByteArray room_data;
