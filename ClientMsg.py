@@ -44,8 +44,13 @@ def join_chatroom():
         # Send a request to join the chatroom
         join_request = f"/join {room_name}"
         client_socket.send(join_request.encode('utf-8'))
+        # Add a welcome message to the chat box
+        chat_box.config(state=tk.NORMAL)
+        chat_box.insert(tk.END, f"Joined chatroom: {room_name}\n")
+        chat_box.config(state=tk.DISABLED)
     except Exception as e:
         print("Failed to join chatroom:", e)
+
 
 def on_closing(event=None):
     """This function is called when the window is closed."""
