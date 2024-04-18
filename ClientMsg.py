@@ -39,8 +39,13 @@ def send_message(event=None):
             client_socket.close()
 
 def join_chatroom():
-    # Implement function to join chatroom
-    pass
+    global client_socket, room_name
+    try:
+        # Send a request to join the chatroom
+        join_request = f"/join {room_name}"
+        client_socket.send(join_request.encode('utf-8'))
+    except Exception as e:
+        print("Failed to join chatroom:", e)
 
 def on_closing(event=None):
     """This function is called when the window is closed."""
@@ -53,14 +58,17 @@ def on_closing(event=None):
         window.destroy()  # Ensure the window closes even if the socket has already been closed
 
 def setup_gui():
-    global window, chat_box, message_entry, client_socket, username
+    global window, chat_box, message_entry, client_socket, username, room_name
 
     window = tk.Tk()
     window.title("Chat Client")
 
     username = simpledialog.askstring("Username", "Enter your username:", parent=window)
+    room_name = simpledialog.askstring("Chatroom", "Enter chatroom name:", parent=window)
     if not username:
-        username = "Anonymous"  # Default username if none provided
+        username = "Anonymous"
+    if not room_name:
+        room_name = "General"
 
     frame = tk.Frame(window)
     scrollbar = tk.Scrollbar(frame)
@@ -76,8 +84,8 @@ def setup_gui():
     send_button = tk.Button(window, text="Send", command=send_message)
     send_button.pack()
 
-    join_button = tk.Button(window, text="Join Chatroom", command=join_chatroom)
-    join_button.pack()
+    # join_button = tk.Button(window, text="Join Chatroom", command=join_chatroom)
+    # join_button.pack()
 
     window.protocol("WM_DELETE_WINDOW", on_closing)
 
@@ -94,7 +102,7 @@ def main():
         return
 
     setup_gui()
-
+    join_chatroom()
     # Start the thread to receive messages
     threading.Thread(target=receive_messages, args=(client_socket, chat_box), daemon=True).start()
 

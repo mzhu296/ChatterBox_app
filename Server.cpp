@@ -6,13 +6,20 @@
 #include <iostream>
 #include <algorithm>
 #include <memory>
+#include <map>
 
 using namespace Sync;
 
-std::vector<std::shared_ptr<Socket>> clients;
-std::mutex clients_mutex;
+class ChatRoom {
+public:
+    std::vector<std::shared_ptr<Socket>> clients;
+    std::mutex clients_mutex;
+};
 
-void handle_client(std::shared_ptr<Socket> client_socket) {
+std::map<std::string, ChatRoom> chatrooms;
+std::mutex chatrooms_mutex;
+
+void handle_client(std::shared_ptr<Socket> client_socket, const std::string& chatroom_name) {
     while (true) {
         try {
             ByteArray data;
@@ -23,9 +30,11 @@ void handle_client(std::shared_ptr<Socket> client_socket) {
                 std::cout << "Client has disconnected." << std::endl;
                 break;
             } else {
-                // Forward the message to all clients
-                std::lock_guard<std::mutex> lock(clients_mutex);
-                for (auto& client : clients) {
+                // Forward the message to all clients in the same chatroom
+                std::lock_guard<std::mutex> lock(chatrooms_mutex);
+                auto& chatroom = chatrooms[chatroom_name];
+                std::lock_guard<std::mutex> client_lock(chatroom.clients_mutex);
+                for (auto& client : chatroom.clients) {
                     if (client != client_socket) {
                         client->Write(data);
                     }
@@ -38,8 +47,10 @@ void handle_client(std::shared_ptr<Socket> client_socket) {
     }
 
     client_socket->Close();
-    std::lock_guard<std::mutex> lock(clients_mutex);
-    clients.erase(std::remove(clients.begin(), clients.end(), client_socket), clients.end());
+    std::lock_guard<std::mutex> lock(chatrooms_mutex);
+    auto& chatroom = chatrooms[chatroom_name];
+    std::lock_guard<std::mutex> client_lock(chatroom.clients_mutex);
+    chatroom.clients.erase(std::remove(chatroom.clients.begin(), chatroom.clients.end(), client_socket), chatroom.clients.end());
 }
 
 int main(int argc, char* argv[]) {
@@ -50,10 +61,16 @@ int main(int argc, char* argv[]) {
             std::shared_ptr<Socket> client_socket(new Socket(server.Accept()));
             std::cout << "Client connected!" << std::endl;
             
-            std::lock_guard<std::mutex> lock(clients_mutex);
-            clients.push_back(client_socket);
+            // Receive chatroom name from client
+            ByteArray room_data;
+            client_socket->Read(room_data);
+            std::string chatroom_name = room_data.ToString();
 
-            std::thread client_thread(handle_client, client_socket);
+            // Join the chatroom or create if it doesn't exist
+            std::lock_guard<std::mutex> lock(chatrooms_mutex);
+            chatrooms[chatroom_name].clients.push_back(client_socket);
+
+            std::thread client_thread(handle_client, client_socket, chatroom_name);
             client_thread.detach();
         }
     } catch (std::exception& e) {
@@ -62,4 +79,3 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
-
