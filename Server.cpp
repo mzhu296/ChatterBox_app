@@ -54,7 +54,7 @@ void handle_client(std::shared_ptr<Socket> client_socket, const std::string& cha
 }
 
 int main(int argc, char* argv[]) {
-    SocketServer server(3000);
+    SocketServer server(2021);
 
     try {
         while (true) {

@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.plist": "xml",
+        "iosfwd": "cpp"
+    }
+}

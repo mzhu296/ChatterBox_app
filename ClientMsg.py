@@ -96,9 +96,11 @@ def setup_gui():
 
 def main():
     global client_socket
-    host = '127.0.0.1'
-    port = 3000
+    # host = '127.0.0.1'
+    # port = 22
 
+    host = '3.88.12.145'
+    port = 2021
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         client_socket.connect((host, port))
