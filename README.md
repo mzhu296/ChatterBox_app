@@ -1,9 +1,4 @@
 "# se3313-2017-Lab4" 
-Below is a simple README file example that guides a user on how to compile and run a chat server and a corresponding chat client application using a Makefile, a server executable, and a Python script for the client. This README assumes you have a directory structure where `make` can be used to compile your server code (likely written in C or C++), and you have a Python script for the client.
-
-### README.md
-
-```
 # Chatroom Application
 
 This is a simple chat application that consists of a server and a client. The server handles messages between multiple clients connected to it. The client program allows users to connect to the server, join chatrooms, and exchange messages.
